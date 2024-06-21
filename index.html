@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #tasks {
+            margin-top: 20px;
+        }
+        .task {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Todo List</h1>
+    <div>
+        <input type="text" id="new-task-title" placeholder="New task title">
+        <button onclick="addTask()">Add Task</button>
+    </div>
+    <div id="tasks"></div>
+
+    <script>
+        const apiUrl = 'http://127.0.0.1:8080/todos';
+
+        async function fetchTasks() {
+            const response = await fetch(apiUrl);
+            const tasks = await response.json();
+            displayTasks(tasks);
+        }
+
+        function displayTasks(tasks) {
+            const tasksDiv = document.getElementById('tasks');
+            tasksDiv.innerHTML = '';
+            tasks.forEach(task => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'task';
+                taskDiv.innerHTML = `
+                    <span>${task.title}</span>
+                    <button onclick="deleteTask(${task.id})">Delete</button>
+                    <button onclick="showUpdateForm(${task.id}, '${task.title}')">Update</button>
+                `;
+                tasksDiv.appendChild(taskDiv);
+            });
+        }
+
+        async function addTask() {
+            const title = document.getElementById('new-task-title').value;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title })
+            });
+            if (response.ok) {
+                fetchTasks();
+                document.getElementById('new-task-title').value = '';
+            }
+        }
+
+        async function deleteTask(id) {
+            const response = await fetch(`${apiUrl}/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                fetchTasks();
+            }
+        }
+
+        function showUpdateForm(id, currentTitle) {
+            const title = prompt('Update task title', currentTitle);
+            if (title) {
+                updateTask(id, title);
+            }
+        }
+
+        async function updateTask(id, title) {
+            const response = await fetch(`${apiUrl}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title })
+            });
+            if (response.ok) {
+                fetchTasks();
+            }
+        }
+
+        // Fetch and display tasks on page load
+        fetchTasks();
+    </script>
+</body>
+</html>
