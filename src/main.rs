@@ -1,7 +1,8 @@
 use std::{fs, sync::{Arc, Mutex}};
 
-use actix_web::{delete, get, post, put, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{cookie::time::Date, delete, get, post, put, web, App, HttpResponse, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 struct AddInfo {
@@ -10,12 +11,12 @@ struct AddInfo {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 struct Todo {
-    id: usize,
+    id: String,
     title: String,
 }
 
 impl Todo {
-    fn new(id: usize, title: String) -> Self {
+    fn new(id: String, title: String) -> Self {
         Todo { id, title }
     }
 }
@@ -39,11 +40,11 @@ async fn home() -> impl Responder {
 
 #[get("/todos/{id}")]
 async fn get_task(
-    path: web::Path<usize>,
+    path: web::Path<String>,
     data: web::Data<AppState>,
 ) -> impl Responder {
     let mut tasks = data.tasks.lock().unwrap();
-    let id: usize = path.into_inner();
+    let id: String = path.into_inner();
     if let Some(task) = tasks.iter_mut().find(|x| x.id == id) {
         HttpResponse::Ok().json(task)
     }else {
@@ -54,7 +55,7 @@ async fn get_task(
 #[post("/todos")]
 async fn add_task(data: web::Data<AppState>, req_body: web::Json<AddInfo>) -> impl Responder {
     let mut tasks = data.tasks.lock().unwrap();
-    let id = tasks.len();
+    let id = Uuid::new_v4().to_string();
     let todo = Todo::new(id, req_body.title.to_string());
     tasks.push(todo.clone());
     HttpResponse::Ok().json(todo.clone())
@@ -62,12 +63,12 @@ async fn add_task(data: web::Data<AppState>, req_body: web::Json<AddInfo>) -> im
 
 #[put("/todos/{id}")]
 async fn update_task(
-    path: web::Path<usize>,
+    path: web::Path<String>,
     data: web::Data<AppState>,
     req_body: web::Json<AddInfo>,
 ) -> impl Responder {
     let mut tasks = data.tasks.lock().unwrap();
-    let id: usize = path.into_inner();
+    let id: String = path.into_inner();
     if let Some(task) = tasks.iter_mut().find(|x| x.id == id) {
         task.title = req_body.title.clone();
     }
@@ -76,11 +77,11 @@ async fn update_task(
 
 #[delete("/todos/{id}")]
 async fn delete_task(
-    path: web::Path<usize>,
+    path: web::Path<String>,
     data: web::Data<AppState>,
 ) -> impl Responder {
     let mut tasks = data.tasks.lock().unwrap();
-    let id: usize = path.into_inner();
+    let id: String = path.into_inner();
     let original_len = tasks.len();
     tasks.retain(|x| x.id != id);
     let new_len = tasks.len();
@@ -97,17 +98,9 @@ async fn main() -> std::io::Result<()> {
     let app_data = Arc::new(AppState {
         tasks: Mutex::new(vec![
             Todo {
-                id: 0,
+                id: "67e55044-10b1-426f-9247-bb680e5fe0c8".to_string(),
                 title: "Learn jem".to_string(),
-            },
-            Todo {
-                id: 1,
-                title: "Learn rem".to_string(),
-            },
-            Todo {
-                id: 2,
-                title: "Learn rtt".to_string(),
-            },
+            }
         ]),
     });
     HttpServer::new(move || {
